@@ -1,4 +1,5 @@
 from live_feature.feature import LiveFeatureDef, LiveFeature, Expander
+import cache
 
 # Decorator to create LiveFeatureDefs out of standalone functions.
 class live_feature(object):
