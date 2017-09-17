@@ -1,4 +1,5 @@
 from live_feature import cache
+from multiprocessing.dummy import Pool
 import inspect
 import logging
 
@@ -15,15 +16,16 @@ class LiveFeatureDef(object):
                                                              self.dtype)
 
 class LiveFeature(object):
-    def __init__(self, feature_def, cache_fn=cache.PassthroughCache):
+    def __init__(self, feature_def, num_workers=16, cache_fn=cache.PassthroughCache):
         self.feature_def = feature_def
         self.cache = cache_fn(feature_def.name, feature_def.func)
+        self.pool = Pool(num_workers)
 
     def get_batch(self, batch):
         if not isinstance(batch, list):
             return self.cache.get(batch)
 
-        feature_batch = map(self.cache.get, [x for x in batch])
+        feature_batch = self.pool.map(self.cache.get, [x for x in batch])
         return feature_batch
 
 

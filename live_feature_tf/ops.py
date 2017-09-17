@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy as np
 import live_feature as lf
 
 def tf_dtype(pytype):
@@ -21,7 +22,11 @@ class Expander(object):
             # This avoids fetching LiveFeatures that have already been folded into the
             # example source.
             feat = {key: None for key in tensor_x.keys()}
-            feat[self._id_key] = x
+            # Handle the batched case.
+            if isinstance(x, np.ndarray):
+                feat[self._id_key] = [i for i in x]
+            else:
+                feat[self._id_key] = x
             self.expander.apply(feat)
             return tuple(feat[key] for key in self.ordered_keys)
 
@@ -30,7 +35,8 @@ class Expander(object):
         expanded_dict = dict(tensor_x)
         expanded_dict.update(zip(self.ordered_keys, tf.py_func(_apply_ordered,
                                                                [tensor_x[self._id_key]],
-                                                               dtypes)))
+                                                               dtypes,
+                                                              stateful=False)))
         return expanded_dict
 
     def transform(self, dataset):
