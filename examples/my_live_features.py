@@ -1,5 +1,6 @@
 from live_feature import live_feature
 import string
+import time
 
 @live_feature("foo", int)
 def get_foo(idx):
