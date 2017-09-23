@@ -5,15 +5,16 @@ import logging
 
 class LiveFeatureDef(object):
     all_instances = []
-    def __init__(self, name, func, dtype):
+    def __init__(self, name, func, shape, dtype):
         self.name = name
         self.func = func
         self.dtype = dtype
+        self.output_shape = shape
         LiveFeatureDef.all_instances.append(self)
 
     def __repr__(self):
-        return "LiveFeatureDef(name=%s,func=%s,dtype=%s)" % (self.name, self.func.__name__,
-                                                             self.dtype)
+        return "LiveFeatureDef(name=%s,func=%s,shape=%s,dtype=%s)" % (self.name, self.func.__name__,
+                                                                      self.shape, self.dtype)
 
 class LiveFeature(object):
     def __init__(self, feature_def, num_workers=16, cache_fn=cache.PassthroughCache):

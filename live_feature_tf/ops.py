@@ -37,6 +37,16 @@ class Expander(object):
                                                                [tensor_x[self._id_key]],
                                                                dtypes,
                                                               stateful=False)))
+        # We also need to set the appropriate shapes for these elements of the expanded_dict.
+        # Going through a py_func makes it impossible to infer the shape from the graph.
+        # The first dim is typically the batch size -- so it should just carry over.
+        # For the other dims, technically, it can be arbitrary, so it should be defined by the
+        # LiveFeatureDef.
+        for key in self.expander.live_features.keys():
+            if key in expanded_dict:
+                shape = self.expander.live_features[key].feature_def.output_shape
+                expanded_dict[key].set_shape((None,)+shape)
+
         return expanded_dict
 
     def transform(self, dataset):
