@@ -3,26 +3,26 @@
 A lightweight framework for adding features fetched from the Web to TensorFlow models.
 Ensures consistency between training and inference time.
 
+This is the base package. Should be the only necessary dependency at serving time.
+For the training time extras, use [`livefeature_tf`](https://github.com/kjchavez/live-feature-tf)
+
 ## Intended API
 
 ```python
 # my_live_features.py
-@live_feature(“wiki_summary”, string)
+import livefeature as lf
+@lf.feature(“wiki_summary”, str)
 def fetch_wiki_summary(idx):
-  # do stuff…
+  # do stuff...
   return str(summary)
 
 
-# In tensorflow training file.
-import my_live_features
-import live_feature_tf as lftf
-def input_fn():
-  x = read_examples(...)
-  lftf.expand(x, my_live_features, cache=lftf.FrozenCache(“/tmp/cache”))
-
 # in webapp.py
-import live_feature as lf
+import livefeature as lf
 import my_live_features
+
+expander = lf.Expander(my_live_features, idd_key='id')
 def predict(x):
-  lf.expand(x, my_live_features, cache=None)
+  expander.apply(x)  # expands in-place.
+  return cloudml_predict(x)
 ```
