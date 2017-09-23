@@ -1,4 +1,4 @@
-from live_feature import cache
+from livefeature import cache
 from multiprocessing.dummy import Pool
 import inspect
 import logging

@@ -7,7 +7,7 @@ import yaml
 
 import cloudml_client
 import my_live_features
-import live_feature as lf
+import livefeature as lf
 
 
 app = Flask(__name__)

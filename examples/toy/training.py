@@ -98,7 +98,7 @@ def receiver_fn_from_dataset(dataset, default_batch_size=None, label_keys=None):
 def run():
     tf.logging.set_verbosity(tf.logging.INFO)
     estimator = tf.estimator.Estimator(model_fn)
-    dataset = get_batched_dataset()
+    dataset = get_dataset()
     # NOTE(kjchavez): Technically, you can also do the batching after the Expander is applied.
     # This is slow. Don't do it. We might just remove this functionality altogether.
     # All of the @live_feature functions will run sequentially, rather than parallelized per batch.

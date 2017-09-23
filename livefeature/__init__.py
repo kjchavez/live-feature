@@ -1,4 +1,4 @@
-from live_feature.feature import LiveFeatureDef, LiveFeature, Expander
+from livefeature.feature import LiveFeatureDef, LiveFeature, Expander
 import cache
 
 # Decorator to create LiveFeatureDefs out of standalone functions.
@@ -6,8 +6,8 @@ import cache
 # However, if instead, the function produces, say a 32 x 32 black and white image,
 # the decorator should set the output shape. E.g.
 #
-# @live_feature("selfie", int, shape=(32,32))
-class live_feature(object):
+# @feature("selfie", int, shape=(32,32))
+class feature(object):
     def __init__(self, name, dtype, shape=()):
         self.name = name
         self.shape = shape

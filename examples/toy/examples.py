@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-import live_feature as lf
+import livefeature as lf
 import json
 
 import my_live_features

@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-import live_feature as lf
+import livefeature as lf
 
 def tf_dtype(pytype):
     if pytype == str:
