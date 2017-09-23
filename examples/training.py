@@ -9,8 +9,6 @@ import my_live_features
 def input_fn(dataset):
     iterator = dataset.make_one_shot_iterator()
     next_elem = iterator.get_next()
-    print(iterator.output_shapes)
-    print(iterator.output_types)
     label = next_elem.pop('baz')
     return next_elem, label
 
@@ -20,14 +18,43 @@ def print_output_shapes(prefix, dataset):
 
 def get_dataset():
     x = {}
+
+    # We just create some random ids and values for a dataset.
     x['id'] = tf.constant(["Q%04d" % i for i in xrange(100)])
     x['baz'] = tf.constant([random.random() for _ in xrange(100)])
+
+    # See https://www.tensorflow.org/versions/master/api_docs/python/tf/contrib/data/Dataset
     dataset = tf.contrib.data.Dataset.from_tensor_slices(x)
     dataset = dataset.batch(8)
-    print_output_shapes("after batch", dataset)
+    print_output_shapes("Shapes of Batched Dataset", dataset)
+
+    # Applying the LiveFeature expansion, based on the functions defined in `my_live_features`
+    # python module.
     expander = lftf.Expander('id', my_live_features, cache_fn=None)
     dataset = expander.transform(dataset)
-    print_output_shapes("after expander", dataset)
+    print_output_shapes("Shapes of Batched, Expanded Dataset", dataset)
+
+    return dataset
+
+def get_post_batched_dataset():
+    x = {}
+
+    # We just create some random ids and values for a dataset.
+    x['id'] = tf.constant(["Q%04d" % i for i in xrange(100)])
+    x['baz'] = tf.constant([random.random() for _ in xrange(100)])
+
+    # See https://www.tensorflow.org/versions/master/api_docs/python/tf/contrib/data/Dataset
+    dataset = tf.contrib.data.Dataset.from_tensor_slices(x)
+
+    # Applying the LiveFeature expansion, based on the functions defined in `my_live_features`
+    # python module.
+    expander = lftf.Expander('id', my_live_features, cache_fn=None)
+    dataset = expander.transform(dataset, batched=False)
+    print_output_shapes("Shapes of Expanded (not batched) Dataset", dataset)
+
+    dataset = dataset.batch(8)
+    print_output_shapes("Shapes of Expanded, Batched Dataset", dataset)
+
     return dataset
 
 def model_fn(features, labels, mode, params):
@@ -40,7 +67,6 @@ def model_fn(features, labels, mode, params):
     predictions['baz_hat'] =  w * tf.to_float(features['foo']) + b
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
         err = predictions['baz_hat'] - labels
-        print("err:", err.shape)
         loss = tf.reduce_mean(tf.square(err), 0)
 
     if mode == tf.estimator.ModeKeys.TRAIN:
@@ -59,12 +85,11 @@ def model_fn(features, labels, mode, params):
 def receiver_fn_from_dataset(dataset, default_batch_size=None, label_keys=None):
     iterator = dataset.make_one_shot_iterator()
     next_elem = iterator.get_next()
-    print(iterator.output_shapes)
-    print(iterator.output_types)
     if label_keys:
         for key in label_keys:
             next_elem.pop(key)
 
+    print("== Features for ReceiverFn == ")
     print(next_elem)
     return tf.estimator.export.build_raw_serving_input_receiver_fn(
             next_elem,
@@ -73,7 +98,11 @@ def receiver_fn_from_dataset(dataset, default_batch_size=None, label_keys=None):
 def run():
     tf.logging.set_verbosity(tf.logging.INFO)
     estimator = tf.estimator.Estimator(model_fn)
-    dataset = get_dataset()
+    dataset = get_batched_dataset()
+    # NOTE(kjchavez): Technically, you can also do the batching after the Expander is applied.
+    # This is slow. Don't do it. We might just remove this functionality altogether.
+    # All of the @live_feature functions will run sequentially, rather than parallelized per batch.
+    # dataset = get_post_batched_dataset()
     estimator.train(lambda: input_fn(dataset), steps=10)
     estimator.evaluate(lambda: input_fn(dataset), steps=10)
     receiver_fn = receiver_fn_from_dataset(dataset, label_keys=['baz'])

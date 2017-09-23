@@ -17,13 +17,13 @@ class Expander(object):
         self.ordered_keys = self.expander.live_features.keys()
         self._id_key = id_key
 
-    def _apply(self, tensor_x):
+    def _apply(self, tensor_x, batched=True):
         def _apply_ordered(x):
             # This avoids fetching LiveFeatures that have already been folded into the
             # example source.
             feat = {key: None for key in tensor_x.keys()}
             # Handle the batched case.
-            if isinstance(x, np.ndarray):
+            if batched:
                 feat[self._id_key] = [i for i in x]
             else:
                 feat[self._id_key] = x
@@ -37,6 +37,7 @@ class Expander(object):
                                                                [tensor_x[self._id_key]],
                                                                dtypes,
                                                               stateful=False)))
+
         # We also need to set the appropriate shapes for these elements of the expanded_dict.
         # Going through a py_func makes it impossible to infer the shape from the graph.
         # The first dim is typically the batch size -- so it should just carry over.
@@ -45,10 +46,20 @@ class Expander(object):
         for key in self.expander.live_features.keys():
             if key in expanded_dict:
                 shape = self.expander.live_features[key].feature_def.output_shape
-                expanded_dict[key].set_shape((None,)+shape)
+                if batched:
+                    shape = (tensor_x[self._id_key].shape[0],) + shape
+
+                expanded_dict[key].set_shape(shape)
 
         return expanded_dict
 
-    def transform(self, dataset):
-        """ Returns a dataset expanded with live features. """
-        return dataset.map(self._apply)
+    def transform(self, dataset, batched=True):
+        """ Returns a dataset expanded with live features.
+        Args:
+            dataset: tf.contrib.data.Dataset object
+            batched: if dataset is already batched
+
+        Returns:
+            Dataset object whose elements are augmented with features from this Expander.
+        """
+        return dataset.map(lambda x: self._apply(x, batched=batched))

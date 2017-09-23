@@ -10,6 +10,7 @@ This will create a SavedModel in `/tmp/exportdir`.
 You can inspect its signature with:
 
 ```bash
+saved_model_cli show --dir /tmp/exportdir/1506190950/ --tag_set serve --signature_def serving_default
 ```
 
 ## Upload to Cloud ML Engine
