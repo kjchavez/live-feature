@@ -50,7 +50,7 @@ def _batched(tfrecord_filepattern, batch_size=64):
 
 def create_caches_from_tfrecord(feature_defs, tfrecord_filepattern, cachedir):
     feature_def = feature_defs[0]
-    key_fn = lambda x: x['VoterParty'][0]  # This should change!
+    key_fn = feature_def.key_func
     value_fn = feature_def.func
     if not os.path.exists(cachedir):
         os.makedirs(cachedir)

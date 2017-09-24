@@ -8,15 +8,36 @@ import logging
 # However, if instead, the function produces, say a 32 x 32 black and white image,
 # the decorator should set the output shape. E.g.
 #
-# @lf.feature("selfie", int, shape=(32,32))
+# @lf.feature("selfie", float, key="id_key", shape=(32,32))
+# @lf.feature("selfie", key_fn=lf.key_fn("id_key"), float, shape=(32,32))
+#
+# General overview.
+#
+# There is an example, X. The typical case is that this is a dictionary of features.
+# We generate a key, K, from X using the |key_fn|. The typical case is simply a lookup of a single
+# dictionary entry.
+# That key is passed to the function that was annotated with @lf.feature and should be used to
+# retrieve the new feature. It will be used to create cache entries as well -- so a key should
+# always map to the same resource (for a fixed time), and ideally, different keys actually point to
+# different resources (not as important, but helpful for space efficiency).
 class feature(object):
-    def __init__(self, name, dtype, shape=()):
+    def __init__(self, name, dtype, key=None, key_fn=None, shape=()):
+        if not key and not key_fn:
+            raise ValueError("Must specify one of |key| or |key_fn|.")
+        if key is not None:
+            def _key_fn(x):
+                return x.get('key_id', "")
+
+            self.key_fn = lambda x: x.get(key, "")[0]
+        else:
+            self.key_fn = key_fn
+
         self.name = name
         self.shape = shape
         self.dtype = dtype
 
     def __call__(self, f):
-        f.__livefeature__feature_def = LiveFeatureDef(self.name, f, self.shape, self.dtype)
+        f.__livefeature__feature_def = LiveFeatureDef(self.name, self.key_fn, f, self.shape, self.dtype)
         return f
 
 def get_feature_defs(python_module):
@@ -29,8 +50,9 @@ def get_feature_defs(python_module):
     return defs
 
 class LiveFeatureDef(object):
-    def __init__(self, name, func, shape, dtype):
+    def __init__(self, name, key_func, func, shape, dtype):
         self.name = name
+        self.key_func = key_func
         self.func = func
         self.dtype = dtype
         self.output_shape = shape
