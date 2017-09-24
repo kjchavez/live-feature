@@ -67,31 +67,39 @@ class LiveFeature(object):
         self.cache = cache_fn(feature_def.name, feature_def.func)
         self.pool = Pool(num_workers)
 
-    def get_batch(self, batch):
-        if not isinstance(batch, list):
-            return self.cache.get(batch)
+    def get(self, x):
+        """ Gets the LiveFeature value for a single example |x|. """
+        key = self.feature_def.key_func(x)
+        return self.cache.get(key)
 
-        feature_batch = self.pool.map(self.cache.get, [x for x in batch])
+    def get_batch(self, batch):
+        feature_batch = self.pool.map(self.get, [x for x in batch])
         return feature_batch
 
 
 class Expander(object):
-    def __init__(self, feature_module, cache_fn=None, id_key='id'):
+    def __init__(self, feature_module, cache_fn=None, num_workers=10):
         if cache_fn is None:
             cache_fn = cache.PassthroughCache
 
-        self.id_key = id_key
         self.live_features = {}
-        fns = set(zip(*inspect.getmembers(feature_module, inspect.isfunction))[1])
-        logging.debug("All fns: %s", fns)
         feature_defs = get_feature_defs(feature_module)
         for f in feature_defs:
             self.live_features[f.name] = LiveFeature(f, cache_fn=cache_fn)
             logging.info("Using %s", f)
 
+        self.pool = Pool(num_workers)
+
+    def apply_batch(self, x_batch):
+        for feature in self.live_features.keys():
+            if feature not in x:
+                x[feature] = self.live_features[feature].get_batch(x_batch)
+
     def apply(self, x):
         """ Expands example |x| with live features. """
-        for key in self.live_features.keys():
-            if key not in x:
-                x[key] = self.live_features[key].get_batch(x[self.id_key])
+        # TODO(kjchavez): This is another bottleneck here. There's no point in making all these
+        # lookups sequentially.
+        for feature in self.live_features.keys():
+            if feature not in x:
+                x[feature] = self.live_features[feature].get(x)
 
