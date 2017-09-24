@@ -8,4 +8,5 @@ setup(name='livefeature',
       author_email='kevin.j.chavez@gmail.com',
       license='MIT',
       packages=['livefeature'],
+      install_requirements=["cachetools>=2.0.1"],
       zip_safe=False)
