@@ -3,6 +3,7 @@ import json
 import shelve
 import os
 
+
 class MemCache(object):
     def __init__(self, name, func, max_size=1000, load_json=None):
         self.name = name
@@ -21,14 +22,15 @@ class MemCache(object):
         with open(filename, 'w') as fp:
             json.dump(dict(self.cache), fp)
 
+
 class PassthroughCache(object):
-    """ Always calls |func| to retrieve value. """
-    def __init__(self, name, func):
-        self.name = name
-        self.func = func
+    """ Always calls |feature_def.func| to retrieve value. """
+    def __init__(self, feature_def):
+        self.func = feature_def.func
 
     def get(self, example_id):
         return self.func(example_id)
+
 
 class PersistentCache(object):
     def __init__(self, filename, func=lambda key: None):

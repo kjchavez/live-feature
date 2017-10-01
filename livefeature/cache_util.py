@@ -5,12 +5,10 @@ import os
 import itertools
 import logging
 import tensorflow as tf
+import threading
 
 from livefeature import cache
 from livefeature import feature_def
-
-def _create_single_cache(feature, tfrecord_iterator, cache_filename):
-    pass
 
 def _to_pyvalue(feature_proto):
     if feature_proto.HasField('bytes_list'):
@@ -48,13 +46,9 @@ def _batched(tfrecord_filepattern, batch_size=64):
             return
         yield batch
 
-def create_caches_from_tfrecord(feature_defs, tfrecord_filepattern, cachedir):
-    feature_def = feature_defs[0]
+def _create_single_cache(feature_def, tfrecord_filepattern, cachedir):
     key_fn = feature_def.key_func
     value_fn = feature_def.func
-    if not os.path.exists(cachedir):
-        os.makedirs(cachedir)
-
     new_cache = cache.PersistentCache(os.path.join(cachedir, feature_def.name), func=value_fn)
     for x in _streamed(tfrecord_filepattern):
         try:
@@ -65,6 +59,19 @@ def create_caches_from_tfrecord(feature_defs, tfrecord_filepattern, cachedir):
 
         new_cache.get(key)
 
+def create_caches_from_tfrecord(feature_defs, tfrecord_filepattern, cachedir):
+    if not os.path.exists(cachedir):
+        os.makedirs(cachedir)
+
+    threads = []
+    for feature_def in feature_defs:
+        t = threading.Thread(target=_create_single_cache, args=(feature_def, tfrecord_filepattern,
+                                                             cachedir))
+        threads.append(t)
+        t.start()
+
+    for t in threads:
+        t.join()
 
 """ Sample example.proto
 features {

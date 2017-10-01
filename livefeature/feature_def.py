@@ -62,9 +62,13 @@ class LiveFeatureDef(object):
                                                                       self.output_shape, self.dtype)
 
 class LiveFeature(object):
-    def __init__(self, feature_def, num_workers=16, cache_fn=cache.PassthroughCache):
+    def __init__(self, feature_def, cache=None, num_workers=8):
         self.feature_def = feature_def
-        self.cache = cache_fn(feature_def.name, feature_def.func)
+        if cache is None:
+            self.cache = cache.PassthroughCache(feature_def)
+        else:
+            self.cache = cache
+
         self.pool = Pool(num_workers)
 
     def get(self, x):
@@ -78,14 +82,13 @@ class LiveFeature(object):
 
 
 class Expander(object):
-    def __init__(self, feature_module, cache_fn=None, num_workers=10):
-        if cache_fn is None:
-            cache_fn = cache.PassthroughCache
-
+    def __init__(self, feature_module, create_cache=cache.PassthroughCache,
+                 num_workers=10):
         self.live_features = {}
         feature_defs = get_feature_defs(feature_module)
         for f in feature_defs:
-            self.live_features[f.name] = LiveFeature(f, cache_fn=cache_fn)
+            _cache = create_cache(f)
+            self.live_features[f.name] = LiveFeature(f, cache=_cache)
             logging.info("Using %s", f)
 
         self.pool = Pool(num_workers)
